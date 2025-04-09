@@ -1,73 +1,78 @@
-# Welcome to your Lovable project
 
-## Project info
+# AI Blog Website
 
-**URL**: https://lovable.dev/projects/b101be83-411e-4ea5-98a7-01b5c50b36af
+A full-stack AI-powered blog platform with Flask backend, MongoDB database, and React frontend.
 
-## How can I edit this code?
+## Project Structure
 
-There are several ways of editing your application.
+- `frontend/`: React application with TypeScript, React Router, and Tailwind CSS
+- `backend/`: Flask API server connecting to MongoDB
+- Database: MongoDB for storing users, blog posts, and comments
 
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/b101be83-411e-4ea5-98a7-01b5c50b36af) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+## Frontend Setup
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+# Install dependencies
+npm install
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start the development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## Backend Setup
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```sh
+# Navigate to backend directory
+cd backend
 
-**Use GitHub Codespaces**
+# Create and activate a virtual environment (recommended)
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+# Install dependencies
+pip install -r requirements.txt
 
-## What technologies are used for this project?
+# Start the Flask server
+python app.py
+```
 
-This project is built with:
+## MongoDB Setup
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+1. Install MongoDB locally or use a cloud service like MongoDB Atlas
+2. Set your MongoDB connection string as an environment variable:
+   ```
+   # For local development
+   export MONGO_URI="mongodb://localhost:27017/ai_blog"
+   
+   # For MongoDB Atlas
+   export MONGO_URI="mongodb+srv://username:password@cluster.mongodb.net/ai_blog"
+   ```
 
-## How can I deploy this project?
+## Features
 
-Simply open [Lovable](https://lovable.dev/projects/b101be83-411e-4ea5-98a7-01b5c50b36af) and click on Share -> Publish.
+- User authentication (login/signup)
+- Blog post creation and management
+- Comment system with spam detection
+- AI-powered content suggestions
+- Responsive design with Tailwind CSS
 
-## Can I connect a custom domain to my Lovable project?
+## API Endpoints
 
-Yes it is!
+### Authentication
+- `POST /api/auth/login`: User login
+- `POST /api/auth/signup`: User registration
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+### Blog Posts
+- `GET /api/posts`: Get all posts
+- `GET /api/posts/:id`: Get a specific post
+- `POST /api/posts`: Create a new post
+- `PUT /api/posts/:id`: Update a post
+- `DELETE /api/posts/:id`: Delete a post
+- `POST /api/posts/:id/like`: Like a post
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+### Comments
+- `POST /api/posts/:id/comments`: Add a comment to a post
+- `DELETE /api/posts/:id/comments/:commentId`: Delete a comment
+
+### AI Features
+- `POST /api/ai/suggestions`: Get AI content suggestions

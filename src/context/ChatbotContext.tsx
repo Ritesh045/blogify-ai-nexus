@@ -37,6 +37,9 @@ const initialMessages: Message[] = [
   },
 ];
 
+// API URL - update this to match your Flask backend URL
+const API_URL = "http://localhost:5000/api";
+
 const ChatbotContext = createContext<ChatbotContextType | undefined>(undefined);
 
 export const useChatbot = () => {
@@ -52,8 +55,8 @@ export const ChatbotProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [isLoading, setIsLoading] = useState(false);
   const [contentSuggestions, setContentSuggestions] = useState<ContentSuggestion[]>([]);
 
-  // Mock AI responses based on input
-  const generateAIResponse = async (userMessage: string): Promise<string> => {
+  // Mock AI responses based on input when API is unavailable
+  const generateLocalAIResponse = async (userMessage: string): Promise<string> => {
     // Wait to simulate API call
     await new Promise(resolve => setTimeout(resolve, 1500));
     
@@ -86,7 +89,9 @@ export const ChatbotProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setIsLoading(true);
     
     try {
-      const aiResponse = await generateAIResponse(content);
+      // In a real implementation, this would call a backend API with AI capabilities
+      // For now, we'll use the mock implementation
+      const aiResponse = await generateLocalAIResponse(content);
       
       const assistantMessage: Message = {
         id: `msg-${Date.now()}-assistant`,
@@ -108,12 +113,35 @@ export const ChatbotProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setMessages(initialMessages);
   };
 
-  // Generate content suggestions
+  // Generate content suggestions using the Flask API
   const generateContentSuggestion = async (type: SuggestionType, prompt?: string) => {
     setIsLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const response = await fetch(`${API_URL}/ai/suggestions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ type, prompt }),
+      });
       
+      if (!response.ok) {
+        throw new Error("Failed to get content suggestion");
+      }
+      
+      const data = await response.json();
+      
+      setContentSuggestions(prev => [...prev, { 
+        type: data.type,
+        suggestion: data.suggestion,
+        used: false 
+      }]);
+      toast.success(`Generated ${type} suggestion!`);
+    } catch (error) {
+      console.error("Failed to generate content suggestion:", error);
+      toast.error("Failed to connect to AI service. Using local fallback.");
+      
+      // Local fallback when API is unavailable
       let suggestion = "";
       
       switch (type) {
@@ -146,10 +174,7 @@ export const ChatbotProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
       
       setContentSuggestions(prev => [...prev, { type, suggestion, used: false }]);
-      toast.success(`Generated ${type} suggestion!`);
-    } catch (error) {
-      console.error("Failed to generate content suggestion:", error);
-      toast.error("Failed to generate content suggestion. Please try again.");
+      toast.success(`Generated ${type} suggestion (local fallback)!`);
     } finally {
       setIsLoading(false);
     }

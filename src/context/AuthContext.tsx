@@ -19,6 +19,9 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// API URL - update this to match your Flask backend URL
+const API_URL = "http://localhost:5000/api";
+
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
@@ -48,21 +51,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      // For demo purposes, mock authentication
-      // In a real app, this would be an API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
       
-      if (email === "demo@example.com" && password === "password") {
-        const newUser = {
-          id: "user-1",
-          name: "Demo User",
-          email: "demo@example.com",
-        };
-        setUser(newUser);
-        localStorage.setItem("user", JSON.stringify(newUser));
-        toast.success("Login successful!");
-      } else {
-        // For demo, allow any login
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || "Login failed");
+      }
+      
+      const newUser = {
+        id: data.id,
+        name: data.name,
+        email: data.email,
+      };
+      
+      setUser(newUser);
+      localStorage.setItem("user", JSON.stringify(newUser));
+      toast.success("Login successful!");
+    } catch (error) {
+      console.error("Login error:", error);
+      toast.error("Login failed. Please try again.");
+      
+      // For demo purposes, allow any login when backend is not available
+      if (!window.location.hostname.includes("localhost")) {
+        console.log("Using demo login since backend might not be available");
         const newUser = {
           id: `user-${Math.random().toString(36).substring(2, 9)}`,
           name: email.split('@')[0],
@@ -70,11 +88,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         setUser(newUser);
         localStorage.setItem("user", JSON.stringify(newUser));
-        toast.success("Login successful!");
+        toast.success("Demo login successful!");
       }
-    } catch (error) {
-      console.error("Login error:", error);
-      toast.error("Login failed. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -83,13 +98,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signup = async (name: string, email: string, password: string) => {
     setIsLoading(true);
     try {
-      // For demo purposes, mock signup
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await fetch(`${API_URL}/auth/signup`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name, email, password }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || "Signup failed");
+      }
       
       const newUser = {
-        id: `user-${Math.random().toString(36).substring(2, 9)}`,
-        name: name,
-        email: email,
+        id: data.id,
+        name: data.name,
+        email: data.email,
       };
       
       setUser(newUser);
@@ -98,6 +124,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error("Signup error:", error);
       toast.error("Signup failed. Please try again.");
+      
+      // For demo purposes, allow signup when backend is not available
+      if (!window.location.hostname.includes("localhost")) {
+        console.log("Using demo signup since backend might not be available");
+        const newUser = {
+          id: `user-${Math.random().toString(36).substring(2, 9)}`,
+          name: name,
+          email: email,
+        };
+        setUser(newUser);
+        localStorage.setItem("user", JSON.stringify(newUser));
+        toast.success("Demo account created successfully!");
+      }
     } finally {
       setIsLoading(false);
     }

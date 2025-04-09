@@ -37,7 +37,10 @@ interface BlogContextType {
   likePost: (id: string) => void;
 }
 
-// Demo data
+// API URL - update this to match your Flask backend URL
+const API_URL = "http://localhost:5000/api";
+
+// Demo data - fallback when API is not available
 const demoBlogs: BlogPost[] = [
   {
     id: "blog-1",
@@ -89,30 +92,71 @@ export const useBlog = () => {
 export const BlogProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [posts, setPosts] = useState<BlogPost[]>([]);
 
+  // Fetch posts from API
   useEffect(() => {
-    // Load from localStorage or use demo data
-    const storedPosts = localStorage.getItem("blogPosts");
-    if (storedPosts) {
+    const fetchPosts = async () => {
       try {
-        const parsedPosts = JSON.parse(storedPosts).map((post: any) => ({
-          ...post,
+        const response = await fetch(`${API_URL}/posts`);
+        
+        if (!response.ok) {
+          throw new Error("Failed to fetch posts");
+        }
+        
+        const data = await response.json();
+        
+        // Transform data to match our BlogPost type
+        const formattedPosts = data.map((post: any) => ({
+          id: post._id,
+          title: post.title,
+          content: post.content,
+          excerpt: post.excerpt,
+          coverImage: post.coverImage,
+          authorId: post.authorId,
+          authorName: post.authorName,
           createdAt: new Date(post.createdAt),
-          comments: post.comments.map((comment: any) => ({
-            ...comment,
-            createdAt: new Date(comment.createdAt)
-          }))
+          tags: post.tags || [],
+          likes: post.likes || 0,
+          comments: (post.comments || []).map((comment: any) => ({
+            id: comment._id,
+            content: comment.content,
+            authorId: comment.authorId,
+            authorName: comment.authorName,
+            createdAt: new Date(comment.createdAt),
+            isSpam: comment.isSpam || false,
+          })),
         }));
-        setPosts(parsedPosts);
+        
+        setPosts(formattedPosts);
       } catch (error) {
-        console.error("Failed to parse stored posts:", error);
-        setPosts(demoBlogs);
+        console.error("Error fetching posts:", error);
+        
+        // Fallback to demo data or localStorage when API is unavailable
+        const storedPosts = localStorage.getItem("blogPosts");
+        if (storedPosts) {
+          try {
+            const parsedPosts = JSON.parse(storedPosts).map((post: any) => ({
+              ...post,
+              createdAt: new Date(post.createdAt),
+              comments: post.comments.map((comment: any) => ({
+                ...comment,
+                createdAt: new Date(comment.createdAt)
+              }))
+            }));
+            setPosts(parsedPosts);
+          } catch (error) {
+            console.error("Failed to parse stored posts:", error);
+            setPosts(demoBlogs);
+          }
+        } else {
+          setPosts(demoBlogs);
+        }
       }
-    } else {
-      setPosts(demoBlogs);
-    }
+    };
+    
+    fetchPosts();
   }, []);
 
-  // Save posts to localStorage whenever they change
+  // Save posts to localStorage as a backup
   useEffect(() => {
     if (posts.length > 0) {
       localStorage.setItem("blogPosts", JSON.stringify(posts));
@@ -127,93 +171,268 @@ export const BlogProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return posts.find(post => post.id === id);
   };
 
-  const createPost = (post: Omit<BlogPost, "id" | "createdAt" | "likes" | "comments">) => {
-    const newPost: BlogPost = {
-      ...post,
-      id: `blog-${Math.random().toString(36).substring(2, 9)}`,
-      createdAt: new Date(),
-      likes: 0,
-      comments: [],
-    };
-    
-    setPosts(prevPosts => [newPost, ...prevPosts]);
-    toast.success("Blog post created successfully!");
-  };
-
-  const updatePost = (id: string, updatedFields: Partial<BlogPost>) => {
-    setPosts(prevPosts => 
-      prevPosts.map(post => 
-        post.id === id ? { ...post, ...updatedFields } : post
-      )
-    );
-    toast.success("Blog post updated!");
-  };
-
-  const deletePost = (id: string) => {
-    setPosts(prevPosts => prevPosts.filter(post => post.id !== id));
-    toast.success("Blog post deleted!");
-  };
-
-  const addComment = (postId: string, comment: Omit<Comment, "id" | "createdAt" | "isSpam">) => {
-    // Simple spam detection (contains excessive URLs or specific spam keywords)
-    const spamKeywords = ["viagra", "casino", "lottery", "winner", "free money"];
-    const hasSpamKeywords = spamKeywords.some(keyword => 
-      comment.content.toLowerCase().includes(keyword)
-    );
-    
-    const urlCount = (comment.content.match(/https?:\/\/[^\s]+/g) || []).length;
-    const isSpam = hasSpamKeywords || urlCount > 2;
-    
-    const newComment: Comment = {
-      ...comment,
-      id: `comment-${Math.random().toString(36).substring(2, 9)}`,
-      createdAt: new Date(),
-      isSpam
-    };
-
-    setPosts(prevPosts => 
-      prevPosts.map(post => {
-        if (post.id === postId) {
-          return {
-            ...post,
-            comments: [...post.comments, newComment]
-          };
-        }
-        return post;
-      })
-    );
-    
-    if (isSpam) {
-      toast.warning("Comment flagged for potential spam and is awaiting review.");
-    } else {
-      toast.success("Comment added successfully!");
+  const createPost = async (post: Omit<BlogPost, "id" | "createdAt" | "likes" | "comments">) => {
+    try {
+      const response = await fetch(`${API_URL}/posts`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(post),
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to create post");
+      }
+      
+      const data = await response.json();
+      
+      const newPost: BlogPost = {
+        id: data._id,
+        title: data.title,
+        content: data.content,
+        excerpt: data.excerpt,
+        coverImage: data.coverImage,
+        authorId: data.authorId,
+        authorName: data.authorName,
+        createdAt: new Date(data.createdAt),
+        tags: data.tags,
+        likes: data.likes,
+        comments: [],
+      };
+      
+      setPosts(prevPosts => [newPost, ...prevPosts]);
+      toast.success("Blog post created successfully!");
+    } catch (error) {
+      console.error("Error creating post:", error);
+      toast.error("Failed to create blog post. Using local storage instead.");
+      
+      // Fallback to local storage when API is unavailable
+      const newPost: BlogPost = {
+        ...post,
+        id: `blog-${Math.random().toString(36).substring(2, 9)}`,
+        createdAt: new Date(),
+        likes: 0,
+        comments: [],
+      };
+      
+      setPosts(prevPosts => [newPost, ...prevPosts]);
+      toast.success("Blog post created successfully (local storage)!");
     }
   };
 
-  const deleteComment = (postId: string, commentId: string) => {
-    setPosts(prevPosts => 
-      prevPosts.map(post => {
-        if (post.id === postId) {
-          return {
-            ...post,
-            comments: post.comments.filter(comment => comment.id !== commentId)
-          };
-        }
-        return post;
-      })
-    );
-    toast.success("Comment deleted!");
+  const updatePost = async (id: string, updatedFields: Partial<BlogPost>) => {
+    try {
+      const response = await fetch(`${API_URL}/posts/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updatedFields),
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to update post");
+      }
+      
+      setPosts(prevPosts => 
+        prevPosts.map(post => 
+          post.id === id ? { ...post, ...updatedFields } : post
+        )
+      );
+      toast.success("Blog post updated!");
+    } catch (error) {
+      console.error("Error updating post:", error);
+      toast.error("Failed to update post on server. Updated locally only.");
+      
+      // Update locally when API is unavailable
+      setPosts(prevPosts => 
+        prevPosts.map(post => 
+          post.id === id ? { ...post, ...updatedFields } : post
+        )
+      );
+    }
   };
 
-  const likePost = (id: string) => {
-    setPosts(prevPosts => 
-      prevPosts.map(post => {
-        if (post.id === id) {
-          return { ...post, likes: post.likes + 1 };
-        }
-        return post;
-      })
-    );
+  const deletePost = async (id: string) => {
+    try {
+      const response = await fetch(`${API_URL}/posts/${id}`, {
+        method: "DELETE",
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to delete post");
+      }
+      
+      setPosts(prevPosts => prevPosts.filter(post => post.id !== id));
+      toast.success("Blog post deleted!");
+    } catch (error) {
+      console.error("Error deleting post:", error);
+      toast.error("Failed to delete post on server. Deleted locally only.");
+      
+      // Delete locally when API is unavailable
+      setPosts(prevPosts => prevPosts.filter(post => post.id !== id));
+    }
+  };
+
+  const addComment = async (postId: string, comment: Omit<Comment, "id" | "createdAt" | "isSpam">) => {
+    try {
+      const response = await fetch(`${API_URL}/posts/${postId}/comments`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(comment),
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to add comment");
+      }
+      
+      const data = await response.json();
+      
+      const newComment: Comment = {
+        id: data._id,
+        content: data.content,
+        authorId: data.authorId,
+        authorName: data.authorName,
+        createdAt: new Date(data.createdAt),
+        isSpam: data.isSpam,
+      };
+      
+      setPosts(prevPosts => 
+        prevPosts.map(post => {
+          if (post.id === postId) {
+            return {
+              ...post,
+              comments: [...post.comments, newComment]
+            };
+          }
+          return post;
+        })
+      );
+      
+      if (newComment.isSpam) {
+        toast.warning("Comment flagged for potential spam and is awaiting review.");
+      } else {
+        toast.success("Comment added successfully!");
+      }
+    } catch (error) {
+      console.error("Error adding comment:", error);
+      toast.error("Failed to add comment on server. Added locally only.");
+      
+      // Simple spam detection (for local fallback)
+      const spamKeywords = ["viagra", "casino", "lottery", "winner", "free money"];
+      const hasSpamKeywords = spamKeywords.some(keyword => 
+        comment.content.toLowerCase().includes(keyword)
+      );
+      
+      const urlCount = (comment.content.match(/https?:\/\/[^\s]+/g) || []).length;
+      const isSpam = hasSpamKeywords || urlCount > 2;
+      
+      // Add comment locally when API is unavailable
+      const newComment: Comment = {
+        ...comment,
+        id: `comment-${Math.random().toString(36).substring(2, 9)}`,
+        createdAt: new Date(),
+        isSpam
+      };
+      
+      setPosts(prevPosts => 
+        prevPosts.map(post => {
+          if (post.id === postId) {
+            return {
+              ...post,
+              comments: [...post.comments, newComment]
+            };
+          }
+          return post;
+        })
+      );
+      
+      if (isSpam) {
+        toast.warning("Comment flagged for potential spam and is awaiting review.");
+      } else {
+        toast.success("Comment added successfully (local only)!");
+      }
+    }
+  };
+
+  const deleteComment = async (postId: string, commentId: string) => {
+    try {
+      const response = await fetch(`${API_URL}/posts/${postId}/comments/${commentId}`, {
+        method: "DELETE",
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to delete comment");
+      }
+      
+      setPosts(prevPosts => 
+        prevPosts.map(post => {
+          if (post.id === postId) {
+            return {
+              ...post,
+              comments: post.comments.filter(comment => comment.id !== commentId)
+            };
+          }
+          return post;
+        })
+      );
+      toast.success("Comment deleted!");
+    } catch (error) {
+      console.error("Error deleting comment:", error);
+      toast.error("Failed to delete comment on server. Deleted locally only.");
+      
+      // Delete comment locally when API is unavailable
+      setPosts(prevPosts => 
+        prevPosts.map(post => {
+          if (post.id === postId) {
+            return {
+              ...post,
+              comments: post.comments.filter(comment => comment.id !== commentId)
+            };
+          }
+          return post;
+        })
+      );
+      toast.success("Comment deleted (local only)!");
+    }
+  };
+
+  const likePost = async (id: string) => {
+    try {
+      const response = await fetch(`${API_URL}/posts/${id}/like`, {
+        method: "POST",
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to like post");
+      }
+      
+      const data = await response.json();
+      
+      setPosts(prevPosts => 
+        prevPosts.map(post => {
+          if (post.id === id) {
+            return { ...post, likes: data.likes };
+          }
+          return post;
+        })
+      );
+    } catch (error) {
+      console.error("Error liking post:", error);
+      
+      // Update like locally when API is unavailable
+      setPosts(prevPosts => 
+        prevPosts.map(post => {
+          if (post.id === id) {
+            return { ...post, likes: post.likes + 1 };
+          }
+          return post;
+        })
+      );
+    }
   };
 
   return (
