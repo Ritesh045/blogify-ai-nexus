@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Link } from "react-router-dom";
-import { Trash2, AlertTriangle } from "lucide-react";
+import { Trash2, ShieldAlert } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,8 +29,20 @@ const CommentSection: React.FC<CommentSectionProps> = ({ post }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [commentToDelete, setCommentToDelete] = useState<string | null>(null);
+  const [showSpam, setShowSpam] = useState(false);
 
-  const validComments = post.comments.filter((comment) => !comment.isSpam);
+  // Filter comments based on spam status and visibility setting
+  const validComments = post.comments.filter(
+    (comment) => !comment.isSpam || showSpam
+  );
+
+  // Count comments by type for display purposes
+  const nonSpamCommentCount = post.comments.filter(
+    (comment) => !comment.isSpam
+  ).length;
+  const spamCommentCount = post.comments.filter(
+    (comment) => comment.isSpam
+  ).length;
 
   const handleSubmitComment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,7 +86,22 @@ const CommentSection: React.FC<CommentSectionProps> = ({ post }) => {
 
   return (
     <div className="mt-10">
-      <h3 className="text-xl font-bold mb-6">Comments ({validComments.length})</h3>
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-xl font-bold">
+          Comments ({nonSpamCommentCount})
+        </h3>
+        {spamCommentCount > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowSpam(!showSpam)}
+            className="flex items-center gap-1"
+          >
+            <ShieldAlert className="h-4 w-4" />
+            {showSpam ? "Hide Flagged Comments" : `Show Flagged Comments (${spamCommentCount})`}
+          </Button>
+        )}
+      </div>
 
       {isAuthenticated ? (
         <form onSubmit={handleSubmitComment} className="mb-8">
@@ -124,7 +151,10 @@ const CommentSection: React.FC<CommentSectionProps> = ({ post }) => {
                 new Date(a.createdAt).getTime()
             )
             .map((comment) => (
-              <div key={comment.id} className="flex gap-4">
+              <div 
+                key={comment.id} 
+                className={`flex gap-4 ${comment.isSpam ? "bg-red-50 p-3 rounded-md border border-red-200" : ""}`}
+              >
                 <Avatar className="w-10 h-10">
                   <AvatarFallback className="bg-gray-300 text-gray-600">
                     {comment.authorName.charAt(0).toUpperCase()}
@@ -150,7 +180,17 @@ const CommentSection: React.FC<CommentSectionProps> = ({ post }) => {
                       </Button>
                     )}
                   </div>
-                  <p className="mt-2 text-gray-700">{comment.content}</p>
+                  <div className="mt-2">
+                    {comment.isSpam ? (
+                      <div className="flex items-center space-x-1 text-red-500 text-sm mb-1">
+                        <ShieldAlert className="h-4 w-4" />
+                        <span>This comment was flagged as potential spam</span>
+                      </div>
+                    ) : null}
+                    <p className={`${comment.isSpam ? "text-gray-500" : "text-gray-700"}`}>
+                      {comment.content}
+                    </p>
+                  </div>
                 </div>
               </div>
             ))}

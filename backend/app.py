@@ -6,6 +6,7 @@ from bson.objectid import ObjectId
 import os
 import datetime
 import json
+import re
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -30,6 +31,43 @@ class JSONEncoder(json.JSONEncoder):
         return super().default(obj)
 
 app.json_encoder = JSONEncoder
+
+# Spam and profanity detection
+def is_spam_or_profanity(content):
+    # Convert to lowercase for case-insensitive matching
+    content_lower = content.lower()
+    
+    # Spam keywords (expanded)
+    spam_keywords = [
+        "viagra", "casino", "lottery", "winner", "free money",
+        "million dollars", "cialis", "naked", "hot singles", "earn money fast",
+        "work from home", "make money online", "weight loss", "enlargement",
+        "investment opportunity", "inherited millions", "nigerian prince",
+        "easy cash", "discount meds", "click here", "act now", "limited offer",
+        "guaranteed earnings", "no experience needed", "instant approval"
+    ]
+    
+    # Profanity words (basic list - can be expanded)
+    profanity_words = [
+        "fuck", "shit", "bitch", "ass", "damn", "cunt", "dick",
+        "pussy", "cock", "whore", "bastard", "asshole", "motherfucker"
+    ]
+    
+    # Check for spam keywords
+    has_spam_keywords = any(keyword in content_lower for keyword in spam_keywords)
+    
+    # Check for profanity 
+    has_profanity = any(word in re.findall(r'\b\w+\b', content_lower) for word in profanity_words)
+    
+    # Check for excessive URLs
+    url_count = len(re.findall(r'https?://[^\s]+', content_lower))
+    excessive_urls = url_count > 2
+    
+    # Check for suspicious patterns (all caps, repeated characters, etc.)
+    all_caps = content.isupper() and len(content) > 10
+    repeated_chars = any(char * 5 in content for char in "!?.$*")
+    
+    return has_spam_keywords or has_profanity or excessive_urls or all_caps or repeated_chars
 
 # Authentication routes
 @app.route('/api/auth/login', methods=['POST'])
@@ -151,18 +189,14 @@ def like_post(post_id):
 @app.route('/api/posts/<post_id>/comments', methods=['POST'])
 def add_comment(post_id):
     data = request.json
+    content = data.get('content', '')
     
-    # Simple spam detection (contains URLs or specific spam keywords)
-    spam_keywords = ["viagra", "casino", "lottery", "winner", "free money"]
-    content = data.get('content', '').lower()
-    
-    has_spam_keywords = any(keyword in content for keyword in spam_keywords)
-    url_count = content.count('http')
-    is_spam = has_spam_keywords or url_count > 2
+    # Enhanced spam and profanity detection
+    is_spam = is_spam_or_profanity(content)
     
     comment = {
         '_id': ObjectId(),
-        'content': data.get('content'),
+        'content': content,
         'authorId': data.get('authorId'),
         'authorName': data.get('authorName'),
         'createdAt': datetime.datetime.utcnow(),
