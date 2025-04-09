@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useBlog, Comment, BlogPost } from "@/context/BlogContext";
 import { useAuth } from "@/context/AuthContext";
@@ -7,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Link } from "react-router-dom";
 import { Trash2, ShieldAlert } from "lucide-react";
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -50,14 +50,26 @@ const CommentSection: React.FC<CommentSectionProps> = ({ post }) => {
 
     setIsSubmitting(true);
     try {
-      addComment(post.id, {
+      const result = await addComment(post.id, {
         content: comment,
         authorId: user.id,
         authorName: user.name,
       });
-      setComment("");
-    } catch (error) {
-      console.error("Error adding comment:", error);
+      
+      // If comment was rejected due to profanity
+      if (result?.rejected) {
+        toast.error("Your comment was not posted as it contains inappropriate language.");
+      } else {
+        setComment("");
+        toast.success("Comment added successfully!");
+      }
+    } catch (error: any) {
+      if (error.message?.includes("inappropriate language")) {
+        toast.error("Your comment was not posted as it contains inappropriate language.");
+      } else {
+        console.error("Error adding comment:", error);
+        toast.error("Failed to add comment. Please try again.");
+      }
     } finally {
       setIsSubmitting(false);
     }

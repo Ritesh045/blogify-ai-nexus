@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, useEffect } from "react";
 import { toast } from "sonner";
 
@@ -37,10 +36,8 @@ interface BlogContextType {
   likePost: (id: string) => void;
 }
 
-// API URL - update this to match your Flask backend URL
 const API_URL = "http://localhost:5000/api";
 
-// Demo data - fallback when API is not available
 const demoBlogs: BlogPost[] = [
   {
     id: "blog-1",
@@ -92,7 +89,6 @@ export const useBlog = () => {
 export const BlogProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [posts, setPosts] = useState<BlogPost[]>([]);
 
-  // Fetch posts from API
   useEffect(() => {
     const fetchPosts = async () => {
       try {
@@ -104,7 +100,6 @@ export const BlogProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         const data = await response.json();
         
-        // Transform data to match our BlogPost type
         const formattedPosts = data.map((post: any) => ({
           id: post._id,
           title: post.title,
@@ -130,7 +125,6 @@ export const BlogProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (error) {
         console.error("Error fetching posts:", error);
         
-        // Fallback to demo data or localStorage when API is unavailable
         const storedPosts = localStorage.getItem("blogPosts");
         if (storedPosts) {
           try {
@@ -156,7 +150,6 @@ export const BlogProvider: React.FC<{ children: React.ReactNode }> = ({ children
     fetchPosts();
   }, []);
 
-  // Save posts to localStorage as a backup
   useEffect(() => {
     if (posts.length > 0) {
       localStorage.setItem("blogPosts", JSON.stringify(posts));
@@ -207,7 +200,6 @@ export const BlogProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error("Error creating post:", error);
       toast.error("Failed to create blog post. Using local storage instead.");
       
-      // Fallback to local storage when API is unavailable
       const newPost: BlogPost = {
         ...post,
         id: `blog-${Math.random().toString(36).substring(2, 9)}`,
@@ -245,7 +237,6 @@ export const BlogProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error("Error updating post:", error);
       toast.error("Failed to update post on server. Updated locally only.");
       
-      // Update locally when API is unavailable
       setPosts(prevPosts => 
         prevPosts.map(post => 
           post.id === id ? { ...post, ...updatedFields } : post
@@ -270,7 +261,6 @@ export const BlogProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error("Error deleting post:", error);
       toast.error("Failed to delete post on server. Deleted locally only.");
       
-      // Delete locally when API is unavailable
       setPosts(prevPosts => prevPosts.filter(post => post.id !== id));
     }
   };
@@ -285,11 +275,14 @@ export const BlogProvider: React.FC<{ children: React.ReactNode }> = ({ children
         body: JSON.stringify(comment),
       });
       
-      if (!response.ok) {
-        throw new Error("Failed to add comment");
-      }
-      
       const data = await response.json();
+      
+      if (!response.ok) {
+        if (data.rejected) {
+          return { rejected: true };
+        }
+        throw new Error(data.error || "Failed to add comment");
+      }
       
       const newComment: Comment = {
         id: data._id,
@@ -314,14 +307,25 @@ export const BlogProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (newComment.isSpam) {
         toast.warning("Comment flagged for potential spam and is awaiting review.");
-      } else {
-        toast.success("Comment added successfully!");
       }
+      
+      return newComment;
     } catch (error) {
       console.error("Error adding comment:", error);
-      toast.error("Failed to add comment on server. Added locally only.");
       
-      // Simple spam detection (for local fallback)
+      const profanityWords = [
+        "fuck", "shit", "bitch", "ass", "damn", "cunt", "dick",
+        "pussy", "cock", "whore", "bastard", "asshole", "motherfucker"
+      ];
+      
+      const hasProfanity = profanityWords.some(word => 
+        new RegExp(`\\b${word}\\b`, 'i').test(comment.content)
+      );
+      
+      if (hasProfanity) {
+        throw new Error("Comment contains inappropriate language and was not posted");
+      }
+      
       const spamKeywords = ["viagra", "casino", "lottery", "winner", "free money"];
       const hasSpamKeywords = spamKeywords.some(keyword => 
         comment.content.toLowerCase().includes(keyword)
@@ -330,7 +334,6 @@ export const BlogProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const urlCount = (comment.content.match(/https?:\/\/[^\s]+/g) || []).length;
       const isSpam = hasSpamKeywords || urlCount > 2;
       
-      // Add comment locally when API is unavailable
       const newComment: Comment = {
         ...comment,
         id: `comment-${Math.random().toString(36).substring(2, 9)}`,
@@ -355,6 +358,8 @@ export const BlogProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         toast.success("Comment added successfully (local only)!");
       }
+      
+      return newComment;
     }
   };
 
@@ -384,7 +389,6 @@ export const BlogProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error("Error deleting comment:", error);
       toast.error("Failed to delete comment on server. Deleted locally only.");
       
-      // Delete comment locally when API is unavailable
       setPosts(prevPosts => 
         prevPosts.map(post => {
           if (post.id === postId) {
@@ -423,7 +427,6 @@ export const BlogProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error("Error liking post:", error);
       
-      // Update like locally when API is unavailable
       setPosts(prevPosts => 
         prevPosts.map(post => {
           if (post.id === id) {

@@ -1,4 +1,3 @@
-
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from pymongo import MongoClient
@@ -32,7 +31,7 @@ class JSONEncoder(json.JSONEncoder):
 
 app.json_encoder = JSONEncoder
 
-# Spam and profanity detection
+# Enhanced profanity and spam detection
 def is_spam_or_profanity(content):
     # Convert to lowercase for case-insensitive matching
     content_lower = content.lower()
@@ -47,17 +46,21 @@ def is_spam_or_profanity(content):
         "guaranteed earnings", "no experience needed", "instant approval"
     ]
     
-    # Profanity words (basic list - can be expanded)
+    # Profanity words (expanded list)
     profanity_words = [
         "fuck", "shit", "bitch", "ass", "damn", "cunt", "dick",
-        "pussy", "cock", "whore", "bastard", "asshole", "motherfucker"
+        "pussy", "cock", "whore", "bastard", "asshole", "motherfucker",
+        "bullshit", "piss", "tits", "slut", "wanker", "twat", "fag",
+        "faggot", "nigger", "nigga", "retard", "bollocks"
     ]
-    
-    # Check for spam keywords
-    has_spam_keywords = any(keyword in content_lower for keyword in spam_keywords)
     
     # Check for profanity 
     has_profanity = any(word in re.findall(r'\b\w+\b', content_lower) for word in profanity_words)
+    if has_profanity:
+        return True, True  # Second parameter indicates it's profanity
+    
+    # Check for spam keywords
+    has_spam_keywords = any(keyword in content_lower for keyword in spam_keywords)
     
     # Check for excessive URLs
     url_count = len(re.findall(r'https?://[^\s]+', content_lower))
@@ -67,7 +70,7 @@ def is_spam_or_profanity(content):
     all_caps = content.isupper() and len(content) > 10
     repeated_chars = any(char * 5 in content for char in "!?.$*")
     
-    return has_spam_keywords or has_profanity or excessive_urls or all_caps or repeated_chars
+    return (has_spam_keywords or excessive_urls or all_caps or repeated_chars), False
 
 # Authentication routes
 @app.route('/api/auth/login', methods=['POST'])
@@ -192,7 +195,14 @@ def add_comment(post_id):
     content = data.get('content', '')
     
     # Enhanced spam and profanity detection
-    is_spam = is_spam_or_profanity(content)
+    is_flagged, is_profanity = is_spam_or_profanity(content)
+    
+    # If it contains profanity, reject the comment entirely
+    if is_profanity:
+        return jsonify({
+            'error': 'Comment contains inappropriate language and was not posted',
+            'rejected': True
+        }), 400
     
     comment = {
         '_id': ObjectId(),
@@ -200,7 +210,7 @@ def add_comment(post_id):
         'authorId': data.get('authorId'),
         'authorName': data.get('authorName'),
         'createdAt': datetime.datetime.utcnow(),
-        'isSpam': is_spam
+        'isSpam': is_flagged
     }
     
     result = posts.update_one(
