@@ -6,12 +6,9 @@ import {
   signInWithEmailAndPassword, 
   signOut, 
   onAuthStateChanged,
-  User as FirebaseUser,
-  updateProfile,
-  signInWithPopup,
-  GoogleAuthProvider
+  updateProfile
 } from "firebase/auth";
-import { auth, googleProvider } from "@/lib/firebase";
+import { auth } from "@/lib/firebase";
 
 type User = {
   id: string;
@@ -25,7 +22,6 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (name: string, email: string, password: string) => Promise<void>;
-  loginWithGoogle: () => Promise<void>;
   logout: () => void;
 }
 
@@ -77,20 +73,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const loginWithGoogle = async () => {
-    setIsLoading(true);
-    try {
-      await signInWithPopup(auth, googleProvider);
-      toast.success("Login with Google successful!");
-    } catch (error: any) {
-      console.error("Google login error:", error);
-      toast.error(error.message || "Google login failed. Please try again.");
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const signup = async (name: string, email: string, password: string) => {
     setIsLoading(true);
     try {
@@ -131,7 +113,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading,
         login,
         signup,
-        loginWithGoogle,
         logout,
       }}
     >

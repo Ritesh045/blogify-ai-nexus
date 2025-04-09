@@ -1,14 +1,13 @@
 
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { getAuth } from "firebase/auth";
 
 // Firebase configuration
-// Replace with your own Firebase config
 const firebaseConfig = {
-  apiKey: "AIzaSyBJV8XuRrSgb8cWzHHG2BlK9xywfGw9kPg",
-  authDomain: "ai-blog-demo.firebaseapp.com",
-  projectId: "ai-blog-demo",
-  storageBucket: "ai-blog-demo.appspot.com",
+  apiKey: "AIzaSyDkTJoWxJa_KyG0EZGrU-Jx5hgN6DMPxIs",
+  authDomain: "blogify-ai-app.firebaseapp.com",
+  projectId: "blogify-ai-app",
+  storageBucket: "blogify-ai-app.appspot.com",
   messagingSenderId: "123456789012",
   appId: "1:123456789012:web:abcdef1234567890abcdef"
 };
@@ -16,4 +15,3 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const googleProvider = new GoogleAuthProvider();
