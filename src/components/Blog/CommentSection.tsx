@@ -57,8 +57,8 @@ const CommentSection: React.FC<CommentSectionProps> = ({ post }) => {
         authorName: user.name,
       });
       
-      // Fixed: Check if result exists and has rejected property
-      if (result && 'rejected' in result && result.rejected) {
+      // Check if result is an object with the rejected property
+      if (result && 'rejected' in result && result.rejected === true) {
         toast.error("Your comment was not posted as it contains inappropriate language.");
       } else {
         setComment("");

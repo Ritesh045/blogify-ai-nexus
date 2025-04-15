@@ -24,6 +24,8 @@ export type Comment = {
   isSpam: boolean;
 };
 
+type CommentResult = Comment | { rejected: boolean };
+
 interface BlogContextType {
   posts: BlogPost[];
   userPosts: (userId: string) => BlogPost[];
@@ -31,7 +33,7 @@ interface BlogContextType {
   createPost: (post: Omit<BlogPost, "id" | "createdAt" | "likes" | "comments">) => void;
   updatePost: (id: string, post: Partial<BlogPost>) => void;
   deletePost: (id: string) => void;
-  addComment: (postId: string, comment: Omit<Comment, "id" | "createdAt" | "isSpam">) => void;
+  addComment: (postId: string, comment: Omit<Comment, "id" | "createdAt" | "isSpam">) => Promise<CommentResult | undefined>;
   deleteComment: (postId: string, commentId: string) => void;
   likePost: (id: string) => void;
 }
@@ -265,7 +267,7 @@ export const BlogProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const addComment = async (postId: string, comment: Omit<Comment, "id" | "createdAt" | "isSpam">) => {
+  const addComment = async (postId: string, comment: Omit<Comment, "id" | "createdAt" | "isSpam">): Promise<CommentResult | undefined> => {
     try {
       const response = await fetch(`${API_URL}/posts/${postId}/comments`, {
         method: "POST",
