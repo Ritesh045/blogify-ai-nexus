@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useBlog, Comment, BlogPost } from "@/context/BlogContext";
 import { useAuth } from "@/context/AuthContext";
@@ -56,8 +57,8 @@ const CommentSection: React.FC<CommentSectionProps> = ({ post }) => {
         authorName: user.name,
       });
       
-      // If comment was rejected due to profanity
-      if (result?.rejected) {
+      // Fixed: Check if result exists and has rejected property
+      if (result && 'rejected' in result && result.rejected) {
         toast.error("Your comment was not posted as it contains inappropriate language.");
       } else {
         setComment("");
