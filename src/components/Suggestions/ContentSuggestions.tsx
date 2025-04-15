@@ -4,7 +4,7 @@ import { useChatbot, ContentSuggestion } from "@/context/ChatbotContext";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Check, Copy, Sparkles, Plus, Loader2, X } from "lucide-react";
+import { Check, Copy, Sparkles, Plus, Loader2, X, Lightbulb } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 
 interface ContentSuggestionsProps {
   onUseSuggestion?: (suggestion: string) => void;
@@ -27,7 +28,6 @@ const ContentSuggestions: React.FC<ContentSuggestionsProps> = ({ onUseSuggestion
   const handleGenerateSuggestion = () => {
     generateContentSuggestion(suggestionType as "title" | "content" | "improvement", customPrompt || undefined);
     setCustomPrompt("");
-    setShowInput(false);
   };
 
   const handleCopy = (text: string) => {
@@ -43,19 +43,30 @@ const ContentSuggestions: React.FC<ContentSuggestionsProps> = ({ onUseSuggestion
     toast.success("Suggestion applied!");
   };
 
+  const suggestionTypeOptions = [
+    { value: "title", label: "Blog Title", description: "Generate catchy blog post titles" },
+    { value: "content", label: "Content Ideas", description: "Get content and topic suggestions" },
+    { value: "improvement", label: "Improvements", description: "Enhance your existing content" },
+  ];
+
   return (
-    <Card className="shadow-md border-gray-200">
-      <CardHeader className="bg-secondary/30 pb-4">
+    <Card className="shadow-sm border border-gray-200">
+      <CardHeader className="bg-white border-b py-4">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-ai" />
-            <CardTitle className="text-lg">AI Content Suggestions</CardTitle>
+            <div className="bg-ai/10 rounded-full p-2">
+              <Sparkles className="h-5 w-5 text-ai" />
+            </div>
+            <div>
+              <CardTitle className="text-lg">Content Suggestions</CardTitle>
+              <p className="text-sm text-gray-600">AI-powered blog content ideas</p>
+            </div>
           </div>
           {contentSuggestions.length > 0 && (
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
-              className="h-8 text-gray-500 hover:text-red-500"
+              className="text-gray-500 hover:text-red-500"
               onClick={clearSuggestions}
             >
               <X className="h-4 w-4 mr-1" />
@@ -64,78 +75,94 @@ const ContentSuggestions: React.FC<ContentSuggestionsProps> = ({ onUseSuggestion
           )}
         </div>
       </CardHeader>
-      <CardContent className="pt-4">
-        <div className="space-y-4">
-          <div className="flex gap-2 items-start">
-            <Select
-              value={suggestionType}
-              onValueChange={setSuggestionType}
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Select type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="title">Blog Title</SelectItem>
-                <SelectItem value="content">Content Ideas</SelectItem>
-                <SelectItem value="improvement">Improvements</SelectItem>
-              </SelectContent>
-            </Select>
+      <CardContent className="p-6">
+        <div className="space-y-5">
+          <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+            <h3 className="text-sm font-medium mb-3">What would you like to generate?</h3>
+            
+            <div className="grid md:grid-cols-3 gap-3 mb-4">
+              {suggestionTypeOptions.map((option) => (
+                <div
+                  key={option.value}
+                  className={`border rounded-lg p-3 cursor-pointer transition-all ${
+                    suggestionType === option.value 
+                      ? "border-ai/50 bg-ai/5 shadow-sm" 
+                      : "border-gray-200 hover:bg-gray-50"
+                  }`}
+                  onClick={() => setSuggestionType(option.value)}
+                >
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="font-medium">{option.label}</span>
+                    {suggestionType === option.value && (
+                      <Badge variant="secondary" className="bg-ai/20 text-ai">Selected</Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-600">{option.description}</p>
+                </div>
+              ))}
+            </div>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowInput(!showInput)}
-              className="flex-shrink-0"
-            >
-              {showInput ? "Hide Prompt" : "Add Prompt"}
-            </Button>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">Add specific prompt (optional)</label>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setShowInput(!showInput)}
+                  className="text-xs h-7"
+                >
+                  {showInput ? "Hide" : "Add Prompt"}
+                </Button>
+              </div>
 
-            <Button 
-              onClick={handleGenerateSuggestion} 
-              disabled={isLoading}
-              className="flex-shrink-0"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  Generate
-                </>
+              {showInput && (
+                <Textarea
+                  value={customPrompt}
+                  onChange={(e) => setCustomPrompt(e.target.value)}
+                  placeholder={
+                    suggestionType === "title"
+                      ? "Enter topic for title suggestions..."
+                      : suggestionType === "content"
+                      ? "Enter topic for content ideas..."
+                      : "Enter your draft content for improvement suggestions..."
+                  }
+                  className="min-h-[80px] w-full"
+                />
               )}
-            </Button>
+
+              <Button 
+                onClick={handleGenerateSuggestion} 
+                disabled={isLoading}
+                className="w-full"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    {customPrompt ? "Generate Based on Prompt" : "Generate Suggestion"}
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
 
-          {showInput && (
-            <Textarea
-              value={customPrompt}
-              onChange={(e) => setCustomPrompt(e.target.value)}
-              placeholder={
-                suggestionType === "title"
-                  ? "Enter topic for title suggestions..."
-                  : suggestionType === "content"
-                  ? "Enter topic for content ideas..."
-                  : "Enter your draft content for improvement suggestions..."
-              }
-              className="min-h-[80px] w-full"
-            />
-          )}
-
-          <div className="space-y-4 mt-4">
+          <div className="space-y-4">
             {contentSuggestions.length === 0 ? (
-              <div className="text-center py-8 border border-dashed border-gray-300 rounded-lg bg-gray-50">
-                <Sparkles className="h-8 w-8 mx-auto text-gray-400 mb-2" />
-                <p className="text-gray-500">
+              <div className="text-center py-10 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                <Lightbulb className="h-10 w-10 mx-auto text-gray-400 mb-3" />
+                <h3 className="font-medium mb-1">No suggestions yet</h3>
+                <p className="text-sm text-gray-500 mb-4">
                   Generate AI suggestions to improve your content
                 </p>
                 <Button
-                  variant="link"
+                  variant="outline"
                   size="sm"
                   onClick={handleGenerateSuggestion}
-                  className="mt-2"
+                  className="mx-auto"
                 >
                   <Plus className="h-4 w-4 mr-1" />
                   Generate your first suggestion
@@ -145,8 +172,8 @@ const ContentSuggestions: React.FC<ContentSuggestionsProps> = ({ onUseSuggestion
               contentSuggestions.map((suggestion, index) => (
                 <div
                   key={index}
-                  className={`border rounded-lg overflow-hidden ${
-                    suggestion.used ? "opacity-60" : ""
+                  className={`border rounded-lg overflow-hidden bg-white ${
+                    suggestion.used ? "opacity-70" : ""
                   }`}
                 >
                   <div className="p-3 bg-gray-50 border-b flex items-center justify-between">
@@ -157,13 +184,13 @@ const ContentSuggestions: React.FC<ContentSuggestionsProps> = ({ onUseSuggestion
                       </span>
                     </div>
                     {suggestion.used && (
-                      <span className="text-green-600 text-sm flex items-center">
+                      <span className="text-green-600 text-xs flex items-center">
                         <Check className="h-3 w-3 mr-1" />
                         Applied
                       </span>
                     )}
                   </div>
-                  <div className="p-3">
+                  <div className="p-4">
                     <p className="whitespace-pre-line text-gray-700">
                       {suggestion.suggestion}
                     </p>
