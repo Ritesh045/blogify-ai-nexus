@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, useEffect } from "react";
 import { toast } from "sonner";
 import { 
@@ -6,7 +7,8 @@ import {
   signOut, 
   onAuthStateChanged,
   updateProfile,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  sendSignInLinkToEmail
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
@@ -24,6 +26,7 @@ interface AuthContextType {
   signup: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   resetPassword: (email: string) => Promise<void>;
+  sendEmailLink: (email: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -116,6 +119,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const sendEmailLink = async (email: string) => {
+    setIsLoading(true);
+    try {
+      // URL must be in the authorized domains list in the Firebase Console
+      const actionCodeSettings = {
+        url: window.location.origin + '/login',
+        handleCodeInApp: true,
+      };
+      
+      await sendSignInLinkToEmail(auth, email, actionCodeSettings);
+      
+      // Save the email to localStorage to use it on login page when user comes back
+      window.localStorage.setItem('emailForSignIn', email);
+      
+      toast.success("Sign-in link sent to your email! Check your inbox.");
+    } catch (error: any) {
+      console.error("Email link error:", error);
+      toast.error(error.message || "Failed to send login email. Please try again.");
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -126,6 +153,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         signup,
         logout,
         resetPassword,
+        sendEmailLink,
       }}
     >
       {children}
